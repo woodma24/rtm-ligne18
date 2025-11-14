@@ -7,53 +7,176 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:sans-serif;height:100vh}
-.header{background:#0066CC;color:#fff;padding:16px;text-align:center}
+body{font-family:sans-serif;height:100vh;background:#f5f5f5}
+.header{background:#0066CC;color:#fff;padding:16px;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
 .line-number{font-size:28px;font-weight:bold}
-#map{height:calc(100vh - 250px);width:100%}
-.info{background:#fff;padding:16px}
+.header-text{font-size:14px;margin-top:4px}
+#map{height:calc(100vh - 340px);width:100%;background:#e5e5e5}
+.info-panel{background:#fff;padding:16px;box-shadow:0 -2px 8px rgba(0,0,0,0.1)}
+.current-stop{margin-bottom:16px}
+.label{font-size:12px;color:#666;margin-bottom:4px}
 .stop-name{font-size:24px;font-weight:bold;color:#0066CC}
-.btn{flex:1;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:600;margin:5px}
-.btn-primary{background:#0066CC;color:#fff}
-.btn-secondary{background:#e0e0e0;color:#333}
-.btn:disabled{opacity:0.4}
+.stop-counter{font-size:14px;color:#999;margin-top:4px}
+.next-stop{background:#f0f7ff;padding:12px;border-radius:8px;margin-bottom:16px}
+.next-stop-name{font-size:18px;font-weight:600;color:#333}
+.distance{font-size:16px;color:#0066CC;margin-top:4px;font-weight:500}
+.button-container{display:flex;gap:8px}
+.button{flex:1;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.2s}
+.button:active{transform:scale(0.98)}
+.button-primary{background:#0066CC;color:#fff}
+.button-secondary{background:#e0e0e0;color:#333}
+.button:disabled{opacity:0.4;cursor:not-allowed}
+.gps-status{text-align:center;padding:8px;font-size:12px;color:#666;background:#f5f5f5;border-radius:4px;margin-top:8px}
+.gps-active{color:#00AA00;font-weight:bold}
 </style>
 </head>
 <body>
 <div class="header">
 <div class="line-number">Ligne 18</div>
-<div>Castellane ⟷ Le Bosquet</div>
+<div class="header-text">Castellane ⟷ Le Bosquet</div>
 </div>
 <div id="map"></div>
-<div class="info">
-<div class="stop-name" id="stopName">Castellane</div>
-<p id="counter">Arrêt 1/10</p>
-<div style="display:flex">
-<button class="btn btn-secondary" id="prev" disabled>← Précédent</button>
-<button class="btn btn-primary" id="next">Suivant →</button>
+<div class="info-panel">
+<div class="current-stop">
+<div class="label">Arrêt actuel :</div>
+<div class="stop-name" id="currentStopName">Castellane</div>
+<div class="stop-counter" id="stopCounter">Arrêt 1 / 10</div>
 </div>
+<div class="next-stop" id="nextStopPanel">
+<div class="label">Prochain arrêt :</div>
+<div class="next-stop-name" id="nextStopName">Prado-Jean Moulin</div>
+<div class="distance" id="distance">📍 Activation du GPS...</div>
+</div>
+<div class="button-container">
+<button class="button button-secondary" id="prevBtn" disabled>← Précédent</button>
+<button class="button button-primary" id="nextBtn">Suivant →</button>
+</div>
+<div class="gps-status" id="gpsStatus">📍 Activation du GPS...</div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const stops=[{name:"Castellane",lat:43.289,lng:5.381},{name:"Prado-Jean Moulin",lat:43.282,lng:5.388},{name:"Menpenti",lat:43.276,lng:5.395},{name:"St Pierre",lat:43.27,lng:5.402},{name:"Jean Moulin",lat:43.265,lng:5.409},{name:"La Timone",lat:43.26,lng:5.416},{name:"La Pomme",lat:43.255,lng:5.423},{name:"St Loup",lat:43.25,lng:5.43},{name:"St Tronc",lat:43.245,lng:5.437},{name:"Le Bosquet",lat:43.24,lng:5.444}];
-let idx=0,map,markers=[];
-window.onload=()=>{
-map=L.map('map').setView([43.265,5.409],13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-L.polyline(stops.map(s=>[s.lat,s.lng]),{color:'#0066CC',weight:4}).addTo(map);
-update();
-};
-function update(){
-markers.forEach(m=>map.removeLayer(m));
-markers=stops.map(s=>L.marker([s.lat,s.lng]).addTo(map));
-document.getElementById('stopName').textContent=stops[idx].name;
-document.getElementById('counter').textContent='Arrêt '+(idx+1)+'/10';
-document.getElementById('prev').disabled=idx===0;
-document.getElementById('next').disabled=idx===9;
-map.setView([stops[idx].lat,stops[idx].lng],15);
+const LINE_18_STOPS=[
+{id:1,name:"Castellane",lat:43.2890,lng:5.3810},
+{id:2,name:"Prado-Jean Moulin",lat:43.2820,lng:5.3880},
+{id:3,name:"Menpenti",lat:43.2760,lng:5.3950},
+{id:4,name:"St Pierre",lat:43.2700,lng:5.4020},
+{id:5,name:"Jean Moulin",lat:43.2650,lng:5.4090},
+{id:6,name:"La Timone",lat:43.2600,lng:5.4160},
+{id:7,name:"La Pomme",lat:43.2550,lng:5.4230},
+{id:8,name:"St Loup",lat:43.2500,lng:5.4300},
+{id:9,name:"St Tronc",lat:43.2450,lng:5.4370},
+{id:10,name:"Le Bosquet",lat:43.2400,lng:5.4440}
+];
+let currentStopIndex=0;
+let userLocation=null;
+let userMarker=null;
+let map=null;
+let stopMarkers=[];
+window.addEventListener('load',function(){
+if(typeof L==='undefined'){
+document.getElementById('gpsStatus').innerHTML='❌ Erreur de chargement';
+return;
 }
-document.getElementById('next').onclick=()=>{if(idx<9){idx++;update();}};
-document.getElementById('prev').onclick=()=>{if(idx>0){idx--;update();}};
+setTimeout(function(){
+try{
+map=L.map('map',{zoomControl:true,attributionControl:false}).setView([43.2650,5.4090],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+const stopIcon=L.icon({
+iconUrl:'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAzMCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTUgMEMxMC4wMyAwIDYgNC4wMyA2IDlDNiAxNC4yNSAxNSAyNSAxNSAyNUMxNSAyNSAyNCAxNC4yNSAyNCA5QzI0IDQuMDMgMTkuOTcgMCAxNSAwWiIgZmlsbD0iIzAwNjZDQyIvPjxjaXJjbGUgY3g9IjE1IiBjeT0iOSIgcj0iNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=',
+iconSize:[30,40],iconAnchor:[15,40]
+});
+window.currentStopIcon=L.icon({
+iconUrl:'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAzMCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTUgMEMxMC4wMyAwIDYgNC4wMyA2IDlDNiAxNC4yNSAxNSAyNSAxNSAyNUMxNSAyNSAyNCAxNC4yNSAyNCA5QzI0IDQuMDMgMTkuOTcgMCAxNSAwWiIgZmlsbD0iI0ZGMDAwMCIvPjxjaXJjbGUgY3g9IjE1IiBjeT0iOSIgcj0iNCIgZmlsbD0id2hpdGUiLz48L3N2Zz4=',
+iconSize:[35,46],iconAnchor:[17.5,46]
+});
+window.userIcon=L.icon({
+iconUrl:'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMCIgY3k9IjEwIiByPSI4IiBmaWxsPSIjMDBDQzAwIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=',
+iconSize:[20,20],iconAnchor:[10,10]
+});
+window.stopIcon=stopIcon;
+updateMarkers();
+L.polyline(LINE_18_STOPS.map(function(stop){return[stop.lat,stop.lng];}),{color:'#0066CC',weight:4,opacity:0.7}).addTo(map);
+if("geolocation" in navigator){
+navigator.geolocation.watchPosition(
+function(position){
+userLocation={lat:position.coords.latitude,lng:position.coords.longitude};
+if(userMarker){
+map.removeLayer(userMarker);
+}
+userMarker=L.marker([userLocation.lat,userLocation.lng],{icon:window.userIcon}).addTo(map);
+userMarker.bindPopup("<b>Ma position</b>");
+document.getElementById('gpsStatus').innerHTML='<span class="gps-active">✓ GPS activé</span>';
+updateUI();
+},
+function(error){
+document.getElementById('gpsStatus').textContent='⚠️ Activez la localisation dans les paramètres';
+},
+{enableHighAccuracy:true,timeout:10000,maximumAge:0}
+);
+}else{
+document.getElementById('gpsStatus').textContent='❌ GPS non disponible';
+}
+function calculateDistance(lat1,lon1,lat2,lon2){
+const R=6371e3;
+const φ1=lat1*Math.PI/180;
+const φ2=lat2*Math.PI/180;
+const Δφ=(lat2-lat1)*Math.PI/180;
+const Δλ=(lon2-lon1)*Math.PI/180;
+const a=Math.sin(Δφ/2)*Math.sin(Δφ/2)+Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)*Math.sin(Δλ/2);
+const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+return Math.round(R*c);
+}
+function updateMarkers(){
+stopMarkers.forEach(function(marker){map.removeLayer(marker);});
+stopMarkers=[];
+LINE_18_STOPS.forEach(function(stop,index){
+const marker=L.marker([stop.lat,stop.lng],{icon:index===currentStopIndex?window.currentStopIcon:window.stopIcon}).addTo(map);
+marker.bindPopup('<b>'+stop.name+'</b><br>Arrêt '+(index+1)+'/10');
+stopMarkers.push(marker);
+});
+}
+function updateUI(){
+const currentStop=LINE_18_STOPS[currentStopIndex];
+const nextStop=currentStopIndex<LINE_18_STOPS.length-1?LINE_18_STOPS[currentStopIndex+1]:null;
+document.getElementById('currentStopName').textContent=currentStop.name;
+document.getElementById('stopCounter').textContent='Arrêt '+(currentStopIndex+1)+' / 10';
+if(nextStop){
+document.getElementById('nextStopPanel').style.display='block';
+document.getElementById('nextStopName').textContent=nextStop.name;
+if(userLocation){
+const distance=calculateDistance(userLocation.lat,userLocation.lng,nextStop.lat,nextStop.lng);
+document.getElementById('distance').textContent='📍 à '+distance+' mètres';
+}else{
+document.getElementById('distance').textContent='📍 Activez le GPS';
+}
+}else{
+document.getElementById('nextStopPanel').style.display='none';
+}
+document.getElementById('prevBtn').disabled=currentStopIndex===0;
+document.getElementById('nextBtn').disabled=currentStopIndex===LINE_18_STOPS.length-1;
+updateMarkers();
+map.setView([currentStop.lat,currentStop.lng],15);
+}
+document.getElementById('nextBtn').addEventListener('click',function(){
+if(currentStopIndex<LINE_18_STOPS.length-1){
+currentStopIndex++;
+updateUI();
+}else{
+alert('🎉 Terminus ! Vous êtes arrivé au Bosquet.');
+}
+});
+document.getElementById('prevBtn').addEventListener('click',function(){
+if(currentStopIndex>0){
+currentStopIndex--;
+updateUI();
+}
+});
+updateUI();
+}catch(e){
+document.getElementById('gpsStatus').innerHTML='❌ Erreur: '+e.message;
+}
+},500);
+});
 </script>
 </body>
 </html>
