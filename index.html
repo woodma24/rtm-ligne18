@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RTM Ligne 18</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:sans-serif;height:100vh}
+.header{background:#0066CC;color:#fff;padding:16px;text-align:center}
+.line-number{font-size:28px;font-weight:bold}
+#map{height:calc(100vh - 250px);width:100%}
+.info{background:#fff;padding:16px}
+.stop-name{font-size:24px;font-weight:bold;color:#0066CC}
+.btn{flex:1;padding:14px;border:none;border-radius:8px;font-size:16px;font-weight:600;margin:5px}
+.btn-primary{background:#0066CC;color:#fff}
+.btn-secondary{background:#e0e0e0;color:#333}
+.btn:disabled{opacity:0.4}
+</style>
+</head>
+<body>
+<div class="header">
+<div class="line-number">Ligne 18</div>
+<div>Castellane ⟷ Le Bosquet</div>
+</div>
+<div id="map"></div>
+<div class="info">
+<div class="stop-name" id="stopName">Castellane</div>
+<p id="counter">Arrêt 1/10</p>
+<div style="display:flex">
+<button class="btn btn-secondary" id="prev" disabled>← Précédent</button>
+<button class="btn btn-primary" id="next">Suivant →</button>
+</div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const stops=[{name:"Castellane",lat:43.289,lng:5.381},{name:"Prado-Jean Moulin",lat:43.282,lng:5.388},{name:"Menpenti",lat:43.276,lng:5.395},{name:"St Pierre",lat:43.27,lng:5.402},{name:"Jean Moulin",lat:43.265,lng:5.409},{name:"La Timone",lat:43.26,lng:5.416},{name:"La Pomme",lat:43.255,lng:5.423},{name:"St Loup",lat:43.25,lng:5.43},{name:"St Tronc",lat:43.245,lng:5.437},{name:"Le Bosquet",lat:43.24,lng:5.444}];
+let idx=0,map,markers=[];
+window.onload=()=>{
+map=L.map('map').setView([43.265,5.409],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+L.polyline(stops.map(s=>[s.lat,s.lng]),{color:'#0066CC',weight:4}).addTo(map);
+update();
+};
+function update(){
+markers.forEach(m=>map.removeLayer(m));
+markers=stops.map(s=>L.marker([s.lat,s.lng]).addTo(map));
+document.getElementById('stopName').textContent=stops[idx].name;
+document.getElementById('counter').textContent='Arrêt '+(idx+1)+'/10';
+document.getElementById('prev').disabled=idx===0;
+document.getElementById('next').disabled=idx===9;
+map.setView([stops[idx].lat,stops[idx].lng],15);
+}
+document.getElementById('next').onclick=()=>{if(idx<9){idx++;update();}};
+document.getElementById('prev').onclick=()=>{if(idx>0){idx--;update();}};
+</script>
+</body>
+</html>
